@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Password Strength Checker</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at top left, #6d5dfc, transparent 35%),
+                        radial-gradient(circle at bottom right, #00c2ff, transparent 35%),
+                        linear-gradient(135deg, #101828, #1d2939);
+            padding: 20px;
+            color: #1f2937;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 540px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(18px);
+            padding: 34px;
+            border-radius: 24px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeIn 0.7s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 30px;
+            color: #111827;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #667085;
+            margin-bottom: 28px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            color: #344054;
+            margin-bottom: 8px;
+        }
+
+        .password-box {
+            display: flex;
+            margin-bottom: 20px;
+            border-radius: 14px;
+            box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08);
+        }
+
+        input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e4e7ec;
+            border-right: none;
+            border-radius: 14px 0 0 14px;
+            font-size: 16px;
+            outline: none;
+            background: #ffffff;
+            color: #111827;
+            transition: 0.25s ease;
+        }
+
+        input::placeholder {
+            color: #98a2b3;
+        }
+
+        input:focus {
+            border-color: #6d5dfc;
+            box-shadow: inset 0 0 0 1px #6d5dfc;
+        }
+
+        button {
+            padding: 0 18px;
+            border: none;
+            background: linear-gradient(135deg, #6d5dfc, #00a3ff);
+            color: white;
+            cursor: pointer;
+            border-radius: 0 14px 14px 0;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            transition: 0.25s ease;
+        }
+
+        button:hover {
+            filter: brightness(1.08);
+            transform: translateY(-1px);
+        }
+
+        .meter {
+            width: 100%;
+            height: 22px;
+            min-height: 22px;
+            max-height: 22px;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            box-shadow: inset 0 2px 6px rgba(16, 24, 40, 0.08);
+            position: relative;
+        }
+
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.35s ease, background 0.35s ease;
+            border-radius: 999px;
+        }
+
+        .bar-label {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .bar-label span {
+            background: rgba(255, 255, 255, 0.88);
+            color: #111827;
+            border-radius: 999px;
+            padding: 1px 8px;
+            font-size: 11px;
+            font-weight: 900;
+            line-height: 1.2;
+            box-shadow: none;
+            letter-spacing: 0.1px;
+        }
+
+        .bar-text-empty {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #667085;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .sassy-comment {
+            display: none;
+            background: linear-gradient(135deg, #eef2ff, #f5f3ff);
+            color: #3730a3;
+            border: 1px solid #c7d2fe;
+            border-radius: 18px;
+            padding: 16px 20px;
+            margin: 0 auto 18px;
+            max-width: 92%;
+            font-weight: 750;
+            line-height: 1.5;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 14px 28px rgba(99, 102, 241, 0.14);
+        }
+
+        .sassy-comment::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: -8px;
+            transform: translateX(-50%) rotate(45deg);
+            width: 16px;
+            height: 16px;
+            background: #eef2ff;
+            border-left: 1px solid #c7d2fe;
+            border-top: 1px solid #c7d2fe;
+        }
+
+        .hack-card {
+            text-align: center;
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 18px 18px;
+            margin-bottom: 18px;
+            border: 1px solid #e5e7eb;
+            border-left: 6px solid #6366f1;
+            box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08);
+        }
+
+        .hack-card span {
+            display: block;
+            color: #667085;
+            font-size: 12px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-family: "Consolas", "Courier New", monospace;
+        }
+
+        .hack-card strong {
+            display: block;
+            color: #111827;
+            font-size: 27px;
+            line-height: 1.25;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            font-family: "Consolas", "Courier New", monospace;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-box {
+            background: #f9fafb;
+            border: 1px solid #eaecf0;
+            border-radius: 16px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-box span {
+            display: block;
+            color: #667085;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 7px;
+        }
+
+        .stat-box strong {
+            color: #111827;
+            font-size: 20px;
+        }
+
+        .requirements {
+            background: #f9fafb;
+            border: 1px solid #eaecf0;
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+
+        .requirements h2,
+        .advice h2 {
+            font-size: 15px;
+            margin-bottom: 10px;
+            color: #111827;
+        }
+
+        .requirement-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            list-style: none;
+        }
+
+        .requirement-list li {
+            border-radius: 11px;
+            padding: 9px 8px;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: 0.25s ease;
+            border: 1px solid transparent;
+        }
+
+        .requirement-list li:hover {
+            transform: translateY(-1px);
+        }
+
+        .requirement-neutral {
+            background: #ffffff;
+            color: #475467;
+            border-color: #eaecf0;
+            box-shadow: 0 8px 18px rgba(16, 24, 40, 0.04);
+        }
+
+        .requirement-bad {
+            background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+            color: #be123c;
+            border-color: #fecdd3;
+            box-shadow: 0 8px 18px rgba(225, 29, 72, 0.08);
+        }
+
+        .requirement-good {
+            background: linear-gradient(135deg, #ecfdf3, #dcfce7);
+            color: #15803d;
+            border-color: #bbf7d0;
+            box-shadow: 0 8px 18px rgba(22, 163, 74, 0.10);
+        }
+
+        .requirement-icon {
+            display: none;
+        }
+
+        .advice {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 18px;
+            padding: 18px 18px 10px 34px;
+            color: #7c2d12;
+            margin-top: 16px;
+        }
+
+        .advice li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .small-note {
+            margin-top: 18px;
+            font-size: 12px;
+            color: #667085;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 560px) {
+            .container {
+                padding: 26px;
+                border-radius: 20px;
+            }
+
+            h1 {
+                font-size: 25px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .requirement-list {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .hack-card strong {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Password Strength Checker</h1>
+        <p class="subtitle">Type a password to check strength, entropy, requirements, and estimated cracking time.</p>
+
+        <label for="password">Enter Password</label>
+        <div class="password-box">
+            <input type="password" id="password" placeholder="Type your password here" oninput="checkPassword()" />
+            <button onclick="togglePassword()">Show</button>
+        </div>
+
+        <div class="meter">
+            <div class="bar-text-empty" id="barTextEmpty">Strength will appear here</div>
+            <div class="meter-fill" id="meterFill"></div>
+            <div class="bar-label" id="barLabel"><span></span></div>
+        </div>
+
+        <div class="sassy-comment" id="sassyComment"></div>
+
+        <div class="hack-card">
+            <span>Time to crack this password</span>
+            <strong id="hackTime">-</strong>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <span>Length</span>
+                <strong id="lengthText">0</strong>
+            </div>
+            <div class="stat-box">
+                <span>Charset</span>
+                <strong id="charsetText">0</strong>
+            </div>
+            <div class="stat-box">
+                <span>Entropy</span>
+                <strong id="entropyText">0 b</strong>
+            </div>
+        </div>
+
+        <div class="requirements">
+            <h2>Requirements</h2>
+            <ul class="requirement-list">
+                <li class="requirement-neutral"><span id="req8" class="requirement-icon"></span>8+ chars</li>
+                <li class="requirement-neutral"><span id="req12" class="requirement-icon"></span>12+ chars</li>
+                <li class="requirement-neutral"><span id="reqUpper" class="requirement-icon"></span>Uppercase</li>
+                <li class="requirement-neutral"><span id="reqLower" class="requirement-icon"></span>Lowercase</li>
+                <li class="requirement-neutral"><span id="reqNumber" class="requirement-icon"></span>Number</li>
+                <li class="requirement-neutral"><span id="reqSymbol" class="requirement-icon"></span>Symbol</li>
+                <li class="requirement-neutral"><span id="reqRepeat" class="requirement-icon"></span>No repeats</li>
+                <li class="requirement-neutral"><span id="reqSequence" class="requirement-icon"></span>No sequences</li>
+            </ul>
+        </div>
+
+        <ul class="advice" id="adviceList">
+            <h2>Serious advice</h2>
+            <li>Use at least 12 characters.</li>
+            <li>Mix uppercase, lowercase, numbers, and symbols.</li>
+            <li>Avoid names, birthdays, repeated characters, and simple patterns.</li>
+        </ul>
+
+        <p class="small-note">Put your bank password here as your account has nothing anyway. Seriously, this tool is for testing only—never enter real bank passwords on random websites.</p>
+    </div>
+
+    <script>
+        function checkPassword() {
+            const password = document.getElementById("password").value;
+            const hackTime = document.getElementById("hackTime");
+            const meterFill = document.getElementById("meterFill");
+            const barTextEmpty = document.getElementById("barTextEmpty");
+            const barLabel = document.getElementById("barLabel");
+            const sassyComment = document.getElementById("sassyComment");
+            const lengthText = document.getElementById("lengthText");
+            const charsetText = document.getElementById("charsetText");
+            const entropyText = document.getElementById("entropyText");
+            const adviceList = document.getElementById("adviceList");
+
+            const hasLower = /[a-z]/.test(password);
+            const hasUpper = /[A-Z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSymbol = /[^A-Za-z0-9]/.test(password);
+            const hasRepeats = hasThreeRepeats(password);
+            const hasSequence = hasSimpleSequence(password);
+
+            let poolSize = getCharsetSize(password);
+            let entropy = password.length > 0 && poolSize > 0 ? password.length * Math.log2(poolSize) : 0;
+
+            lengthText.textContent = password.length;
+            charsetText.textContent = poolSize;
+            entropyText.textContent = entropy.toFixed(1) + " b";
+
+            updateRequirement("req8", password.length >= 8, password.length > 0);
+            updateRequirement("req12", password.length >= 12, password.length > 0);
+            updateRequirement("reqUpper", hasUpper, password.length > 0);
+            updateRequirement("reqLower", hasLower, password.length > 0);
+            updateRequirement("reqNumber", hasNumber, password.length > 0);
+            updateRequirement("reqSymbol", hasSymbol, password.length > 0);
+            updateRequirement("reqRepeat", !hasRepeats, password.length > 0);
+            updateRequirement("reqSequence", !hasSequence, password.length > 0);
+
+            if (password.length === 0) {
+                hackTime.textContent = "-";
+                meterFill.style.width = "0%";
+                meterFill.style.background = "transparent";
+                barLabel.querySelector("span").textContent = "";
+                barLabel.style.display = "none";
+                barTextEmpty.style.display = "flex";
+                sassyComment.style.display = "none";
+                sassyComment.textContent = "";
+                adviceList.innerHTML = `
+                    <h2>Serious advice</h2>
+                    <li>Use at least 12 characters.</li>
+                    <li>Mix uppercase, lowercase, numbers, and symbols.</li>
+                    <li>Avoid names, birthdays, repeated characters, and simple patterns.</li>
+                `;
+                return;
+            }
+
+            let score = calculateScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence);
+            let strength = getStrength(score);
+
+            meterFill.style.width = score + "%";
+            meterFill.style.background = strength.color;
+            barLabel.querySelector("span").textContent = strength.label + " • " + score + "%";
+            barLabel.style.display = "flex";
+            barTextEmpty.style.display = "none";
+
+            hackTime.textContent = estimateCrackTime(password);
+            sassyComment.style.display = "block";
+            sassyComment.textContent = getSassyComment(score, password, hasRepeats, hasSequence);
+            adviceList.innerHTML = getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence);
+        }
+
+        function getCharsetSize(password) {
+            let poolSize = 0;
+            if (/[a-z]/.test(password)) poolSize += 26;
+            if (/[A-Z]/.test(password)) poolSize += 26;
+            if (/[0-9]/.test(password)) poolSize += 10;
+            if (/[^A-Za-z0-9]/.test(password)) poolSize += 32;
+            return poolSize;
+        }
+
+        function hasThreeRepeats(password) {
+            for (let i = 0; i < password.length - 2; i++) {
+                if (password[i] === password[i + 1] && password[i] === password[i + 2]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function hasSimpleSequence(password) {
+            const lowerPassword = password.toLowerCase();
+            const sequences = ["1234", "2345", "3456", "4567", "5678", "6789", "abcd", "bcde", "cdef", "qwer", "asdf"];
+            return sequences.some(sequence => lowerPassword.includes(sequence));
+        }
+
+        function calculateScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence) {
+            let score = 0;
+
+            if (password.length >= 8) score += 15;
+            if (password.length >= 12) score += 20;
+            if (hasLower) score += 10;
+            if (hasUpper) score += 10;
+            if (hasNumber) score += 10;
+            if (hasSymbol) score += 15;
+
+            score += Math.min(20, Math.floor(entropy / 4));
+
+            const commonPasswords = ["password", "123456", "12345678", "qwerty", "abc123", "111111", "admin", "iloveyou"];
+            if (commonPasswords.includes(password.toLowerCase())) score = 5;
+            if (hasRepeats) score -= 10;
+            if (hasSequence) score -= 10;
+
+            return Math.max(5, Math.min(score, 100));
+        }
+
+        function getStrength(score) {
+            if (score < 40) {
+                return { label: "Weak", color: "linear-gradient(90deg, #fb7185, #e11d48)" };
+            }
+            if (score < 75) {
+                return { label: "Medium", color: "linear-gradient(90deg, #fbbf24, #f97316)" };
+            }
+            return { label: "Strong", color: "linear-gradient(90deg, #86efac, #16a34a)" };
+        }
+
+        function estimateCrackTime(password) {
+            const poolSize = getCharsetSize(password);
+            if (poolSize === 0) return "Instantly";
+
+            const guesses = Math.pow(poolSize, password.length);
+            const guessesPerSecond = 1000000000;
+            const seconds = guesses / guessesPerSecond;
+
+            if (seconds < 1) return formatSubSecond(seconds) + " seconds";
+            if (seconds < 60) return Math.round(seconds) + " seconds";
+            if (seconds < 3600) return Math.round(seconds / 60) + " minutes";
+            if (seconds < 86400) return Math.round(seconds / 3600) + " hours";
+
+            const totalDays = Math.floor(seconds / 86400);
+
+            if (totalDays < 365) {
+                return totalDays + " " + (totalDays === 1 ? "day" : "days");
+            }
+
+            const years = Math.floor(totalDays / 365);
+            const days = totalDays % 365;
+
+            let yearText = years.toLocaleString() + " " + (years === 1 ? "year" : "years");
+            let dayText = days + " " + (days === 1 ? "day" : "days");
+
+            if (days === 0) return yearText;
+            return yearText + " and " + dayText;
+        }
+
+        function formatSubSecond(seconds) {
+            if (seconds >= 0.01) return seconds.toFixed(2);
+            if (seconds >= 0.001) return seconds.toFixed(3);
+            if (seconds >= 0.000001) return seconds.toFixed(6);
+            return "0.000001";
+        }
+
+        function getSassyComment(score, password, hasRepeats, hasSequence) {
+            const commonPasswords = ["password", "123456", "12345678", "qwerty", "abc123", "111111", "admin", "iloveyou"];
+
+            const commonRoasts = [
+                "This password is so famous, it probably has its own Wikipedia page.",
+                "Bro typed the password equivalent of leaving the front door open with snacks for the hacker.",
+                "This password has been guessed more times than exam answers in a group chat."
+            ];
+
+            const shortRoasts = [
+                "That password is shorter than a TikTok attention span.",
+                "I blinked and the password was over.",
+                "This password is not weak. It is unemployed."
+            ];
+
+            const sequenceRoasts = [
+                "1234 energy detected. Even your keyboard predicted that one.",
+                "That sequence is so obvious, the hacker does not need Wi‑Fi, just vibes.",
+                "Using 1234 is not a password. It is a surrender note."
+            ];
+
+            const repeatRoasts = [
+                "Repeating letters like that is not security, it is your keyboard having a panic attack.",
+                "Same character three times? The hacker just yawned and logged in.",
+                "This password has more repetition than a lecturer saying ‘this will be in the exam’."
+            ];
+
+            const weakRoasts = [
+                "This password is basically a paper lock on a glass door.",
+                "A hacker would crack this during their loading screen.",
+                "This password is giving ‘please hack me gently’ energy."
+            ];
+
+            const mediumRoasts = [
+                "Not bad. Not great. It is standing outside the gym thinking about going in.",
+                "This password studied for the test, but only on the bus ride there.",
+                "It has potential, but right now it is wearing security as a fashion accessory."
+            ];
+
+            const strongRoasts = [
+                "Okay, this password came prepared. Hacker is crying in the corner.",
+                "This password has security guards, CCTV, and trust issues.",
+                "Finally, a password that did not embarrass the entire internet."
+            ];
+
+            if (commonPasswords.includes(password.toLowerCase())) return pickRandom(commonRoasts);
+            if (password.length < 8) return pickRandom(shortRoasts);
+            if (hasSequence) return pickRandom(sequenceRoasts);
+            if (hasRepeats) return pickRandom(repeatRoasts);
+            if (score < 40) return pickRandom(weakRoasts);
+            if (score < 75) return pickRandom(mediumRoasts);
+            return pickRandom(strongRoasts);
+        }
+
+        function pickRandom(list) {
+            return list[Math.floor(Math.random() * list.length)];
+        }
+
+        function getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence) {
+            let advice = ["<h2>Serious advice</h2>"];
+
+            if (password.length < 12) advice.push("<li>Make the password 12 characters or longer.</li>");
+            if (!hasUpper) advice.push("<li>Add at least one uppercase letter.</li>");
+            if (!hasLower) advice.push("<li>Add at least one lowercase letter.</li>");
+            if (!hasNumber) advice.push("<li>Add at least one number.</li>");
+            if (!hasSymbol) advice.push("<li>Add at least one symbol such as @, #, $, %, or &.</li>");
+            if (hasRepeats) advice.push("<li>Avoid repeating the same character three or more times.</li>");
+            if (hasSequence) advice.push("<li>Avoid simple sequences like 1234, abcd, qwer, or asdf.</li>");
+
+            if (advice.length === 1) {
+                advice.push("<li>This looks strong. Still, never reuse the same password on different websites.</li>");
+                advice.push("<li>Use a password manager for important accounts.</li>");
+            }
+
+            return advice.join("");
+        }
+
+        function updateRequirement(id, passed, active) {
+            const item = document.getElementById(id);
+            const box = item.parentElement;
+
+            if (!active) {
+                box.className = "requirement-neutral";
+                return;
+            }
+
+            box.className = passed ? "requirement-good" : "requirement-bad";
+        }
+
+        function togglePassword() {
+            const passwordInput = document.getElementById("password");
+            const button = document.querySelector("button");
+
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                button.textContent = "Hide";
+            } else {
+                passwordInput.type = "password";
+                button.textContent = "Show";
+            }
+        }
+    </script>
+</body>
+</html>
