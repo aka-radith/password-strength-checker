@@ -450,6 +450,7 @@
             const hasUpper = /[A-Z]/.test(password);
             const hasNumber = /[0-9]/.test(password);
             const hasSymbol = /[^A-Za-z0-9]/.test(password);
+            const onlySymbols = /^[^A-Za-z0-9]+$/.test(password);
             const hasRepeats = hasThreeRepeats(password);
             const hasSequence = hasSimpleSequence(password);
             const hasCommonEnding = hasCommonEndingPattern(password);
@@ -491,7 +492,7 @@
                 return;
             }
 
-            let score = getFinalScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
+            let score = getFinalScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
             let strength = getStrength(score);
 
             meterFill.style.width = score + "%";
@@ -502,8 +503,8 @@
 
             hackTime.textContent = estimateCrackTime(password, zxcvbnResult);
             sassyComment.style.display = "block";
-            sassyComment.textContent = getSassyComment(score, password, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
-            adviceList.innerHTML = getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
+            sassyComment.textContent = getSassyComment(score, password, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
+            adviceList.innerHTML = getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
         }
 
         function getCharsetSize(password) {
@@ -561,7 +562,11 @@
             return { found: false, type: "", value: "" };
         }
 
-        function getFinalScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
+        function getFinalScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
+            if (onlySymbols) {
+                return Math.min(30, Math.max(8, password.length * 6));
+            }
+
             if (zxcvbnResult) {
                 let score = [10, 28, 52, 74, 92][zxcvbnResult.score];
 
@@ -737,7 +742,7 @@
             return "0.000001";
         }
 
-        function getSassyComment(score, password, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
+        function getSassyComment(score, password, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
             const commonPasswords = ["password", "123456", "12345678", "qwerty", "abc123", "111111", "admin", "iloveyou"];
 
             const commonRoasts = [
@@ -800,6 +805,13 @@
                 "Finally, a password that did not embarrass the entire internet."
             ];
 
+            if (onlySymbols) {
+                return pickRandom([
+                    "Only symbols? That is not a password, that is keyboard confetti.",
+                    "Symbols alone look fancy, but the hacker is still not impressed.",
+                    "You smashed the symbol row and called it security. Bold choice."
+                ]);
+            }
             if (famousIssue.found && famousIssue.type === "sign") return pickRandom(famousSignRoasts);
             if (famousIssue.found && famousIssue.type === "character") return pickRandom(famousCharacterRoasts);
             if (commonPasswords.includes(password.toLowerCase())) return pickRandom(commonRoasts);
@@ -835,7 +847,7 @@
             return list[Math.floor(Math.random() * list.length)];
         }
 
-        function getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
+        function getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
             let advice = ["<h2>Serious advice</h2>"];
 
             if (zxcvbnResult && zxcvbnResult.feedback) {
@@ -853,6 +865,7 @@
             if (!hasLower) advice.push("<li>Add at least one lowercase letter.</li>");
             if (!hasNumber) advice.push("<li>Add at least one number.</li>");
             if (!hasSymbol) advice.push("<li>Add at least one symbol such as @, #, $, %, or &.</li>");
+            if (onlySymbols) advice.push("<li>Do not use only symbols. Mix symbols with letters and numbers.</li>");
             if (hasRepeats) advice.push("<li>Avoid repeating the same character three or more times.</li>");
             if (hasSequence) advice.push("<li>Avoid simple sequences like 123, 1234, abc, qwer, or asdf.</li>");
             if (hasCommonEnding) advice.push("<li>Avoid predictable endings like @123, #123, 2026, 111, or 000.</li>");
