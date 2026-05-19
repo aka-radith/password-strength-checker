@@ -368,6 +368,7 @@
             }
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
 </head>
 <body>
     <div class="container">
@@ -451,6 +452,10 @@
             const hasSymbol = /[^A-Za-z0-9]/.test(password);
             const hasRepeats = hasThreeRepeats(password);
             const hasSequence = hasSimpleSequence(password);
+            const hasCommonEnding = hasCommonEndingPattern(password);
+            const dictionaryIssue = detectDictionaryWord(password);
+            const famousIssue = detectFamousReference(password);
+            const zxcvbnResult = typeof zxcvbn === "function" && password.length > 0 ? zxcvbn(password) : null;
 
             let poolSize = getCharsetSize(password);
             let entropy = password.length > 0 && poolSize > 0 ? password.length * Math.log2(poolSize) : 0;
@@ -486,7 +491,7 @@
                 return;
             }
 
-            let score = calculateScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence);
+            let score = getFinalScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
             let strength = getStrength(score);
 
             meterFill.style.width = score + "%";
@@ -495,10 +500,10 @@
             barLabel.style.display = "flex";
             barTextEmpty.style.display = "none";
 
-            hackTime.textContent = estimateCrackTime(password);
+            hackTime.textContent = estimateCrackTime(password, zxcvbnResult);
             sassyComment.style.display = "block";
-            sassyComment.textContent = getSassyComment(score, password, hasRepeats, hasSequence);
-            adviceList.innerHTML = getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence);
+            sassyComment.textContent = getSassyComment(score, password, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
+            adviceList.innerHTML = getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
         }
 
         function getCharsetSize(password) {
@@ -521,11 +526,64 @@
 
         function hasSimpleSequence(password) {
             const lowerPassword = password.toLowerCase();
-            const sequences = ["1234", "2345", "3456", "4567", "5678", "6789", "abcd", "bcde", "cdef", "qwer", "asdf"];
+            const sequences = ["123", "1234", "2345", "3456", "4567", "5678", "6789", "abc", "abcd", "bcde", "cdef", "qwe", "qwer", "asd", "asdf"];
             return sequences.some(sequence => lowerPassword.includes(sequence));
         }
 
-        function calculateScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence) {
+        function hasCommonEndingPattern(password) {
+            const lowerPassword = password.toLowerCase();
+            return /[@#$!_\-]?(123|1234|111|000|007|2024|2025|2026)$/.test(lowerPassword);
+        }
+
+        function detectFamousReference(password) {
+            const lowerPassword = password.toLowerCase();
+            const cleanPassword = lowerPassword.replace(/[^a-z0-9]/g, "");
+
+            const famousCharacters = [
+                "batman", "superman", "spiderman", "ironman", "hulk", "thor", "joker", "harrypotter",
+                "voldemort", "naruto", "goku", "pikachu", "sonic", "mario", "luigi", "elsa",
+                "shrek", "barbie", "sherlock", "bond", "jamesbond", "johnwick", "thanos", "deadpool"
+            ];
+
+            const famousSigns = ["007", "911", "666", "786", "420", "69", "404"];
+
+            const character = famousCharacters.find(name => cleanPassword.includes(name));
+            const sign = famousSigns.find(symbol => cleanPassword.includes(symbol));
+
+            if (sign) {
+                return { found: true, type: "sign", value: sign };
+            }
+
+            if (character) {
+                return { found: true, type: "character", value: character };
+            }
+
+            return { found: false, type: "", value: "" };
+        }
+
+        function getFinalScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
+            if (zxcvbnResult) {
+                let score = [10, 28, 52, 74, 92][zxcvbnResult.score];
+
+                if (password.length >= 14 && zxcvbnResult.score >= 3) score += 5;
+                if (hasUpper && hasLower && hasNumber && hasSymbol && zxcvbnResult.score >= 3) score += 5;
+                if (hasSequence) score -= 10;
+                if (hasCommonEnding) score -= 12;
+                if (hasRepeats) score -= 8;
+
+                if (dictionaryIssue.compoundCount >= 2) score = Math.min(score, 38);
+                else if (dictionaryIssue.found && hasCommonEnding) score = Math.min(score, 48);
+                else if (dictionaryIssue.found && zxcvbnResult.score <= 2) score = Math.min(score, 58);
+
+                if (famousIssue.found) score = Math.min(score, famousIssue.type === "sign" ? 45 : 55);
+
+                return Math.max(5, Math.min(Math.round(score), 100));
+            }
+
+            return calculateScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue);
+        }
+
+        function calculateScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue) {
             let score = 0;
 
             if (password.length >= 8) score += 15;
@@ -538,11 +596,90 @@
             score += Math.min(20, Math.floor(entropy / 4));
 
             const commonPasswords = ["password", "123456", "12345678", "qwerty", "abc123", "111111", "admin", "iloveyou"];
+
             if (commonPasswords.includes(password.toLowerCase())) score = 5;
             if (hasRepeats) score -= 10;
-            if (hasSequence) score -= 10;
+            if (hasSequence) score -= 15;
+            if (hasCommonEnding) score -= 18;
+            if (famousIssue.found) {
+                score -= famousIssue.type === "sign" ? 25 : 18;
+                score = Math.min(score, famousIssue.type === "sign" ? 45 : 55);
+            }
+
+            if (dictionaryIssue.compoundCount >= 2) {
+                // Two or more meaningful words together should not become Strong just because it is long.
+                score -= 45;
+                score = Math.min(score, 35);
+            } else if (dictionaryIssue.found) {
+                score -= dictionaryIssue.onlyWord ? 35 : 22;
+
+                if (dictionaryIssue.onlyWord) {
+                    score = Math.min(score, 32);
+                } else if (hasCommonEnding) {
+                    score = Math.min(score, 48);
+                } else {
+                    score = Math.min(score, 68);
+                }
+            }
 
             return Math.max(5, Math.min(score, 100));
+        }
+
+        function detectDictionaryWord(password) {
+            const cleanPassword = password.toLowerCase().replace(/[^a-z]/g, "");
+
+            // A real full dictionary is too large for one HTML file, so this list covers many common words,
+            // names, places, objects, sports, animals, foods, colours, seasons, and internet words.
+            const commonWords = [
+                "about", "above", "admin", "after", "again", "airplane", "alarm", "alpha", "angel", "angry",
+                "animal", "apple", "april", "aqua", "arctic", "artist", "august", "australia", "baby", "banana",
+                "bangladesh", "baseball", "basket", "basketball", "batman", "beach", "beautiful", "before", "bengal",
+                "bicycle", "birthday", "black", "blue", "book", "bottle", "brave", "bread", "break", "bridge",
+                "brown", "burger", "butter", "button", "camera", "campus", "candy", "captain", "carpet", "castle",
+                "cat", "champion", "change", "charger", "cheese", "chicken", "chocolate", "city", "classic", "cloud",
+                "coffee", "college", "colour", "computer", "cookie", "cool", "cricket", "cyber", "dance", "danger",
+                "dark", "december", "delta", "diamond", "doctor", "dragon", "dream", "driver", "eagle", "earth",
+                "easy", "energy", "engine", "english", "family", "famous", "father", "february", "fighter", "fire",
+                "fish", "flower", "football", "forest", "forever", "freedom", "friend", "future", "galaxy", "garden", "ghost",
+                "gold", "google", "green", "guitar", "hacker", "happy", "hello", "hero", "holiday", "home",
+                "honey", "horse", "house", "hunter", "india", "instagram", "internet", "january", "jordan", "july",
+                "june", "killer", "king", "kitchen", "knight", "laptop", "legend", "lemon", "light", "lion",
+                "london", "love", "magic", "march", "master", "matrix", "may", "melbourne", "mobile", "money",
+                "monkey", "monster", "moon", "mother", "music", "night", "ninja", "november", "ocean", "office",
+                "orange", "panda", "paper", "parrot", "password", "peace", "phone", "pizza", "planet", "player",
+                "pokemon", "power", "prince", "princess", "purple", "qwerty", "rabbit", "rain", "rainbow", "red",
+                "river", "robot", "rocket", "school", "secret", "security", "shadow", "silver", "soccer", "space",
+                "spider", "spring", "star", "student", "summer", "sun", "sunshine", "super", "superman", "sydney",
+                "teacher", "tiger", "travel", "trust", "university", "video", "water", "welcome", "white", "winter",
+                "winner", "world", "yellow", "youtube", "zebra"
+            ];
+
+            if (cleanPassword.length < 4) {
+                return { found: false, word: "", onlyWord: false, compoundCount: 0, compoundWords: [] };
+            }
+
+            const sortedWords = commonWords.sort((a, b) => b.length - a.length);
+            const matchedWords = [];
+            let remaining = cleanPassword;
+
+            for (const word of sortedWords) {
+                if (word.length >= 4 && remaining.includes(word)) {
+                    matchedWords.push(word);
+                    remaining = remaining.replace(word, " ");
+                }
+            }
+
+            const foundWord = matchedWords[0] || "";
+            const onlyWord = Boolean(foundWord) && cleanPassword === foundWord;
+            const compoundCount = matchedWords.length;
+
+            return {
+                found: compoundCount > 0,
+                word: foundWord,
+                onlyWord: onlyWord,
+                compoundCount: compoundCount,
+                compoundWords: matchedWords
+            };
         }
 
         function getStrength(score) {
@@ -555,7 +692,12 @@
             return { label: "Strong", color: "linear-gradient(90deg, #86efac, #16a34a)" };
         }
 
-        function estimateCrackTime(password) {
+        function estimateCrackTime(password, zxcvbnResult) {
+            if (zxcvbnResult && zxcvbnResult.crack_times_seconds) {
+                const seconds = zxcvbnResult.crack_times_seconds.offline_fast_hashing_1e10_per_second;
+                return formatTimeFromSeconds(seconds);
+            }
+
             const poolSize = getCharsetSize(password);
             if (poolSize === 0) return "Instantly";
 
@@ -563,6 +705,10 @@
             const guessesPerSecond = 1000000000;
             const seconds = guesses / guessesPerSecond;
 
+            return formatTimeFromSeconds(seconds);
+        }
+
+        function formatTimeFromSeconds(seconds) {
             if (seconds < 1) return formatSubSecond(seconds) + " seconds";
             if (seconds < 60) return Math.round(seconds) + " seconds";
             if (seconds < 3600) return Math.round(seconds / 60) + " minutes";
@@ -591,13 +737,31 @@
             return "0.000001";
         }
 
-        function getSassyComment(score, password, hasRepeats, hasSequence) {
+        function getSassyComment(score, password, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
             const commonPasswords = ["password", "123456", "12345678", "qwerty", "abc123", "111111", "admin", "iloveyou"];
 
             const commonRoasts = [
                 "This password is so famous, it probably has its own Wikipedia page.",
                 "Bro typed the password equivalent of leaving the front door open with snacks for the hacker.",
                 "This password has been guessed more times than exam answers in a group chat."
+            ];
+
+            const dictionaryRoasts = [
+                "A dictionary word? The hacker brought a dictionary and you gave them the page number.",
+                "This password is literally giving English homework, not cybersecurity.",
+                "Dictionary word detected. The hacker just opened spell check and found you."
+            ];
+
+            const famousCharacterRoasts = [
+                "Using a famous character name? Batman protects Gotham, not your login.",
+                "Bro picked a movie character and expected military-grade security.",
+                "Famous character detected. The hacker has watched that franchise too."
+            ];
+
+            const famousSignRoasts = [
+                "007 detected. James Bond is cool, but even he would not use this password.",
+                "Famous number detected. The hacker did not need a license to crack this.",
+                "That number is famous enough to have fans. Sadly, hackers are fans too."
             ];
 
             const shortRoasts = [
@@ -636,7 +800,29 @@
                 "Finally, a password that did not embarrass the entire internet."
             ];
 
+            if (zxcvbnResult && zxcvbnResult.feedback && zxcvbnResult.feedback.warning) {
+                if (zxcvbnResult.score <= 1) {
+                    return "zxcvbn saw this and immediately called security. " + zxcvbnResult.feedback.warning;
+                }
+            }
             if (commonPasswords.includes(password.toLowerCase())) return pickRandom(commonRoasts);
+            if (famousIssue.found && famousIssue.type === "sign") return pickRandom(famousSignRoasts);
+            if (famousIssue.found && famousIssue.type === "character") return pickRandom(famousCharacterRoasts);
+            if (dictionaryIssue.compoundCount >= 2) {
+                return pickRandom([
+                    "Two real words together? Cute. The hacker brought a dictionary and a coffee.",
+                    "That is not a password, that is just two vocabulary words holding hands.",
+                    "Meaningful words detected. The hacker is not hacking, they are reading."
+                ]);
+            }
+            if (dictionaryIssue.found && hasCommonEnding) {
+                return pickRandom([
+                    "Dictionary word plus @123? That is not security, that is decoration.",
+                    "You added @123 like a hacker has never seen season one of passwords.",
+                    "Word + @123 detected. The hacker just whispered ‘classic’ and walked in."
+                ]);
+            }
+            if (dictionaryIssue.found) return pickRandom(dictionaryRoasts);
             if (password.length < 8) return pickRandom(shortRoasts);
             if (hasSequence) return pickRandom(sequenceRoasts);
             if (hasRepeats) return pickRandom(repeatRoasts);
@@ -649,8 +835,18 @@
             return list[Math.floor(Math.random() * list.length)];
         }
 
-        function getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence) {
+        function getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
             let advice = ["<h2>Serious advice</h2>"];
+
+            if (zxcvbnResult && zxcvbnResult.feedback) {
+                if (zxcvbnResult.feedback.warning) {
+                    advice.push("<li>" + zxcvbnResult.feedback.warning + "</li>");
+                }
+
+                zxcvbnResult.feedback.suggestions.forEach(function(suggestion) {
+                    advice.push("<li>" + suggestion + "</li>");
+                });
+            }
 
             if (password.length < 12) advice.push("<li>Make the password 12 characters or longer.</li>");
             if (!hasUpper) advice.push("<li>Add at least one uppercase letter.</li>");
@@ -658,7 +854,11 @@
             if (!hasNumber) advice.push("<li>Add at least one number.</li>");
             if (!hasSymbol) advice.push("<li>Add at least one symbol such as @, #, $, %, or &.</li>");
             if (hasRepeats) advice.push("<li>Avoid repeating the same character three or more times.</li>");
-            if (hasSequence) advice.push("<li>Avoid simple sequences like 1234, abcd, qwer, or asdf.</li>");
+            if (hasSequence) advice.push("<li>Avoid simple sequences like 123, 1234, abc, qwer, or asdf.</li>");
+            if (hasCommonEnding) advice.push("<li>Avoid predictable endings like @123, #123, 2026, 111, or 000.</li>");
+            if (famousIssue.found) advice.push("<li>Avoid famous character names or famous numbers like 007 because attackers often try them.</li>");
+            if (dictionaryIssue.compoundCount >= 2) advice.push("<li>Avoid joining two meaningful dictionary words together. It can still be guessed by dictionary-based attacks.</li>");
+            else if (dictionaryIssue.found) advice.push("<li>Avoid basic dictionary words like names, places, sports, brands, or common objects.</li>");
 
             if (advice.length === 1) {
                 advice.push("<li>This looks strong. Still, never reuse the same password on different websites.</li>");
