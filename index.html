@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Password Strength Checker</title>
+
     <style>
         * {
             box-sizing: border-box;
@@ -154,7 +155,6 @@
             font-size: 11px;
             font-weight: 900;
             line-height: 1.2;
-            box-shadow: none;
             letter-spacing: 0.1px;
         }
 
@@ -202,7 +202,7 @@
             text-align: center;
             background: #ffffff;
             border-radius: 18px;
-            padding: 18px 18px;
+            padding: 18px;
             margin-bottom: 18px;
             border: 1px solid #e5e7eb;
             border-left: 6px solid #6366f1;
@@ -368,8 +368,10 @@
             }
         }
     </style>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
 </head>
+
 <body>
     <div class="container">
         <h1>Password Strength Checker</h1>
@@ -430,10 +432,12 @@
             <li>Avoid names, birthdays, repeated characters, and simple patterns.</li>
         </ul>
 
-        <p class="small-note">Put your bank password here as your account has nothing anyway. Seriously, this tool is for testing only—never enter real bank passwords on random websites.</p>
+        <p class="small-note">This tool is for testing only. Do not enter real bank passwords or real account passwords on random websites.</p>
     </div>
 
     <script>
+        const MAX_YEARS_AT_100_PERCENT = 190932084;
+
         function checkPassword() {
             const password = document.getElementById("password").value;
             const hackTime = document.getElementById("hackTime");
@@ -458,8 +462,8 @@
             const famousIssue = detectFamousReference(password);
             const zxcvbnResult = typeof zxcvbn === "function" && password.length > 0 ? zxcvbn(password) : null;
 
-            let poolSize = getCharsetSize(password);
-            let entropy = password.length > 0 && poolSize > 0 ? password.length * Math.log2(poolSize) : 0;
+            const poolSize = getCharsetSize(password);
+            const entropy = password.length > 0 && poolSize > 0 ? password.length * Math.log2(poolSize) : 0;
 
             lengthText.textContent = password.length;
             charsetText.textContent = poolSize;
@@ -492,8 +496,23 @@
                 return;
             }
 
-            let score = getFinalScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
-            let strength = getStrength(score);
+            let score = getFinalScore(
+                password,
+                entropy,
+                hasLower,
+                hasUpper,
+                hasNumber,
+                hasSymbol,
+                onlySymbols,
+                hasRepeats,
+                hasSequence,
+                hasCommonEnding,
+                dictionaryIssue,
+                famousIssue,
+                zxcvbnResult
+            );
+
+            const strength = getStrength(score);
 
             meterFill.style.width = score + "%";
             meterFill.style.background = strength.color;
@@ -501,18 +520,45 @@
             barLabel.style.display = "flex";
             barTextEmpty.style.display = "none";
 
-            hackTime.textContent = estimateCrackTime(password, zxcvbnResult);
+            hackTime.textContent = formatTimeFromScore(score);
+
             sassyComment.style.display = "block";
-            sassyComment.textContent = getSassyComment(score, password, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
-            adviceList.innerHTML = getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult);
+            sassyComment.textContent = getSassyComment(
+                score,
+                password,
+                onlySymbols,
+                hasRepeats,
+                hasSequence,
+                hasCommonEnding,
+                dictionaryIssue,
+                famousIssue,
+                zxcvbnResult
+            );
+
+            adviceList.innerHTML = getSeriousAdvice(
+                password,
+                hasLower,
+                hasUpper,
+                hasNumber,
+                hasSymbol,
+                onlySymbols,
+                hasRepeats,
+                hasSequence,
+                hasCommonEnding,
+                dictionaryIssue,
+                famousIssue,
+                zxcvbnResult
+            );
         }
 
         function getCharsetSize(password) {
             let poolSize = 0;
+
             if (/[a-z]/.test(password)) poolSize += 26;
             if (/[A-Z]/.test(password)) poolSize += 26;
             if (/[0-9]/.test(password)) poolSize += 10;
             if (/[^A-Za-z0-9]/.test(password)) poolSize += 32;
+
             return poolSize;
         }
 
@@ -522,12 +568,20 @@
                     return true;
                 }
             }
+
             return false;
         }
 
         function hasSimpleSequence(password) {
             const lowerPassword = password.toLowerCase();
-            const sequences = ["123", "1234", "2345", "3456", "4567", "5678", "6789", "abc", "abcd", "bcde", "cdef", "qwe", "qwer", "asd", "asdf"];
+
+            const sequences = [
+                "123", "1234", "2345", "3456", "4567", "5678", "6789",
+                "abc", "abcd", "bcde", "cdef",
+                "qwe", "qwer", "asd", "asdf",
+                "zxc", "zxcv"
+            ];
+
             return sequences.some(sequence => lowerPassword.includes(sequence));
         }
 
@@ -541,9 +595,11 @@
             const cleanPassword = lowerPassword.replace(/[^a-z0-9]/g, "");
 
             const famousCharacters = [
-                "batman", "superman", "spiderman", "ironman", "hulk", "thor", "joker", "harrypotter",
-                "voldemort", "naruto", "goku", "pikachu", "sonic", "mario", "luigi", "elsa",
-                "shrek", "barbie", "sherlock", "bond", "jamesbond", "johnwick", "thanos", "deadpool"
+                "batman", "superman", "spiderman", "ironman", "hulk",
+                "thor", "joker", "harrypotter", "voldemort", "naruto",
+                "goku", "pikachu", "sonic", "mario", "luigi", "elsa",
+                "shrek", "barbie", "sherlock", "bond", "jamesbond",
+                "johnwick", "thanos", "deadpool"
             ];
 
             const famousSigns = ["007", "911", "666", "786", "420", "69", "404"];
@@ -562,105 +618,33 @@
             return { found: false, type: "", value: "" };
         }
 
-        function getFinalScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
-            if (onlySymbols) {
-                return Math.min(30, Math.max(8, password.length * 6));
-            }
-
-            if (zxcvbnResult) {
-                let score = [10, 28, 52, 74, 92][zxcvbnResult.score];
-
-                if (password.length >= 14 && zxcvbnResult.score >= 3) score += 5;
-                if (hasUpper && hasLower && hasNumber && hasSymbol && zxcvbnResult.score >= 3) score += 5;
-                if (hasSequence) score -= 10;
-                if (hasCommonEnding) score -= 12;
-                if (hasRepeats) score -= 8;
-
-                if (dictionaryIssue.compoundCount >= 2) score = Math.min(score, 38);
-                else if (dictionaryIssue.found && hasCommonEnding) score = Math.min(score, 48);
-                else if (dictionaryIssue.found && zxcvbnResult.score <= 2) score = Math.min(score, 58);
-
-                if (famousIssue.found) score = Math.min(score, famousIssue.type === "sign" ? 45 : 55);
-
-                return Math.max(5, Math.min(Math.round(score), 100));
-            }
-
-            return calculateScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue);
-        }
-
-        function calculateScore(password, entropy, hasLower, hasUpper, hasNumber, hasSymbol, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue) {
-            let score = 0;
-
-            if (password.length >= 8) score += 15;
-            if (password.length >= 12) score += 20;
-            if (hasLower) score += 10;
-            if (hasUpper) score += 10;
-            if (hasNumber) score += 10;
-            if (hasSymbol) score += 15;
-
-            score += Math.min(20, Math.floor(entropy / 4));
-
-            const commonPasswords = ["password", "123456", "12345678", "qwerty", "abc123", "111111", "admin", "iloveyou"];
-
-            if (commonPasswords.includes(password.toLowerCase())) score = 5;
-            if (hasRepeats) score -= 10;
-            if (hasSequence) score -= 15;
-            if (hasCommonEnding) score -= 18;
-            if (famousIssue.found) {
-                score -= famousIssue.type === "sign" ? 25 : 18;
-                score = Math.min(score, famousIssue.type === "sign" ? 45 : 55);
-            }
-
-            if (dictionaryIssue.compoundCount >= 2) {
-                // Two or more meaningful words together should not become Strong just because it is long.
-                score -= 45;
-                score = Math.min(score, 35);
-            } else if (dictionaryIssue.found) {
-                score -= dictionaryIssue.onlyWord ? 35 : 22;
-
-                if (dictionaryIssue.onlyWord) {
-                    score = Math.min(score, 32);
-                } else if (hasCommonEnding) {
-                    score = Math.min(score, 48);
-                } else {
-                    score = Math.min(score, 68);
-                }
-            }
-
-            return Math.max(5, Math.min(score, 100));
-        }
-
         function detectDictionaryWord(password) {
             const cleanPassword = password.toLowerCase().replace(/[^a-z]/g, "");
 
-            // A real full dictionary is too large for one HTML file, so this list covers many common words,
-            // names, places, objects, sports, animals, foods, colours, seasons, and internet words.
             const commonWords = [
-                "about", "above", "admin", "after", "again", "airplane", "alarm", "alpha", "angel", "angry",
-                "animal", "apple", "april", "aqua", "arctic", "artist", "august", "australia", "baby", "banana",
-                "bangladesh", "baseball", "basket", "basketball", "batman", "beach", "beautiful", "before", "bengal",
-                "bicycle", "birthday", "black", "blue", "book", "bottle", "brave", "bread", "break", "bridge",
-                "brown", "burger", "butter", "button", "camera", "campus", "candy", "captain", "carpet", "castle",
-                "cat", "champion", "change", "charger", "cheese", "chicken", "chocolate", "city", "classic", "cloud",
-                "coffee", "college", "colour", "computer", "cookie", "cool", "cricket", "cyber", "dance", "danger",
-                "dark", "december", "delta", "diamond", "doctor", "dragon", "dream", "driver", "eagle", "earth",
-                "easy", "energy", "engine", "english", "family", "famous", "father", "february", "fighter", "fire",
-                "fish", "flower", "football", "forest", "forever", "freedom", "friend", "future", "galaxy", "garden", "ghost",
-                "gold", "google", "green", "guitar", "hacker", "happy", "hello", "hero", "holiday", "home",
-                "honey", "horse", "house", "hunter", "india", "instagram", "internet", "january", "jordan", "july",
-                "june", "killer", "king", "kitchen", "knight", "laptop", "legend", "lemon", "light", "lion",
-                "london", "love", "magic", "march", "master", "matrix", "may", "melbourne", "mobile", "money",
-                "monkey", "monster", "moon", "mother", "music", "night", "ninja", "november", "ocean", "office",
-                "orange", "panda", "paper", "parrot", "password", "peace", "phone", "pizza", "planet", "player",
-                "pokemon", "power", "prince", "princess", "purple", "qwerty", "rabbit", "rain", "rainbow", "red",
-                "river", "robot", "rocket", "school", "secret", "security", "shadow", "silver", "soccer", "space",
-                "spider", "spring", "star", "student", "summer", "sun", "sunshine", "super", "superman", "sydney",
-                "teacher", "tiger", "travel", "trust", "university", "video", "water", "welcome", "white", "winter",
-                "winner", "world", "yellow", "youtube", "zebra"
+                "password", "admin", "welcome", "hello", "qwerty", "love",
+                "family", "friend", "mother", "father", "student", "school",
+                "university", "sydney", "australia", "bangladesh", "india",
+                "london", "melbourne", "apple", "banana", "orange", "pizza",
+                "chicken", "coffee", "football", "cricket", "soccer", "basketball",
+                "batman", "superman", "spiderman", "ironman", "joker", "dragon",
+                "tiger", "lion", "monkey", "panda", "rabbit", "eagle", "horse",
+                "computer", "laptop", "phone", "mobile", "google", "youtube",
+                "instagram", "internet", "security", "hacker", "secret", "money",
+                "king", "queen", "prince", "princess", "star", "moon", "sun",
+                "happy", "forever", "beautiful", "master", "winner", "legend",
+                "summer", "winter", "spring", "january", "february", "march",
+                "april", "june", "july", "august", "december"
             ];
 
             if (cleanPassword.length < 4) {
-                return { found: false, word: "", onlyWord: false, compoundCount: 0, compoundWords: [] };
+                return {
+                    found: false,
+                    word: "",
+                    onlyWord: false,
+                    compoundCount: 0,
+                    compoundWords: []
+                };
             }
 
             const sortedWords = commonWords.sort((a, b) => b.length - a.length);
@@ -687,167 +671,262 @@
             };
         }
 
+        function getFinalScore(
+            password,
+            entropy,
+            hasLower,
+            hasUpper,
+            hasNumber,
+            hasSymbol,
+            onlySymbols,
+            hasRepeats,
+            hasSequence,
+            hasCommonEnding,
+            dictionaryIssue,
+            famousIssue,
+            zxcvbnResult
+        ) {
+            if (onlySymbols) {
+                return Math.min(30, Math.max(8, password.length * 6));
+            }
+
+            let score = 0;
+
+            if (zxcvbnResult) {
+                score = [8, 28, 52, 74, 90][zxcvbnResult.score];
+            } else {
+                score = Math.min(90, Math.floor(entropy));
+            }
+
+            if (password.length >= 8) score += 5;
+            if (password.length >= 12) score += 8;
+            if (password.length >= 16) score += 8;
+            if (password.length >= 20) score += 7;
+
+            if (hasLower) score += 4;
+            if (hasUpper) score += 4;
+            if (hasNumber) score += 4;
+            if (hasSymbol) score += 6;
+
+            if (hasLower && hasUpper && hasNumber && hasSymbol) score += 8;
+
+            if (password.length < 8) score = Math.min(score, 35);
+            if (password.length < 12) score = Math.min(score, 65);
+
+            if (hasRepeats) score -= 10;
+            if (hasSequence) score -= 12;
+            if (hasCommonEnding) score -= 15;
+
+            if (dictionaryIssue.compoundCount >= 2) {
+                score -= 25;
+                score = Math.min(score, 45);
+            } else if (dictionaryIssue.found) {
+                score -= dictionaryIssue.onlyWord ? 30 : 18;
+                score = Math.min(score, dictionaryIssue.onlyWord ? 35 : 65);
+            }
+
+            if (famousIssue.found) {
+                score -= famousIssue.type === "sign" ? 25 : 18;
+                score = Math.min(score, famousIssue.type === "sign" ? 45 : 55);
+            }
+
+            const veryCommonPasswords = [
+                "password", "password123", "password@123",
+                "123456", "12345678", "qwerty", "abc123",
+                "111111", "admin", "admin123", "iloveyou"
+            ];
+
+            if (veryCommonPasswords.includes(password.toLowerCase())) {
+                score = 5;
+            }
+
+            return Math.max(5, Math.min(Math.round(score), 100));
+        }
+
         function getStrength(score) {
             if (score < 40) {
-                return { label: "Weak", color: "linear-gradient(90deg, #fb7185, #e11d48)" };
+                return {
+                    label: "Weak",
+                    color: "linear-gradient(90deg, #fb7185, #e11d48)"
+                };
             }
+
             if (score < 75) {
-                return { label: "Medium", color: "linear-gradient(90deg, #fbbf24, #f97316)" };
-            }
-            return { label: "Strong", color: "linear-gradient(90deg, #86efac, #16a34a)" };
-        }
-
-        function estimateCrackTime(password, zxcvbnResult) {
-            if (zxcvbnResult && zxcvbnResult.crack_times_seconds) {
-                const seconds = zxcvbnResult.crack_times_seconds.offline_fast_hashing_1e10_per_second;
-                return formatTimeFromSeconds(seconds);
+                return {
+                    label: "Medium",
+                    color: "linear-gradient(90deg, #fbbf24, #f97316)"
+                };
             }
 
-            const poolSize = getCharsetSize(password);
-            if (poolSize === 0) return "Instantly";
-
-            const guesses = Math.pow(poolSize, password.length);
-            const guessesPerSecond = 1000000000;
-            const seconds = guesses / guessesPerSecond;
-
-            return formatTimeFromSeconds(seconds);
+            return {
+                label: "Strong",
+                color: "linear-gradient(90deg, #86efac, #16a34a)"
+            };
         }
 
-        function formatTimeFromSeconds(seconds) {
-            if (seconds < 1) return formatSubSecond(seconds) + " seconds";
-            if (seconds < 60) return Math.round(seconds) + " seconds";
-            if (seconds < 3600) return Math.round(seconds / 60) + " minutes";
-            if (seconds < 86400) return Math.round(seconds / 3600) + " hours";
+        function formatTimeFromScore(score) {
+            score = Math.max(0, Math.min(score, 100));
 
-            const totalDays = Math.floor(seconds / 86400);
-
-            if (totalDays < 365) {
-                return totalDays + " " + (totalDays === 1 ? "day" : "days");
+            if (score >= 100) {
+                return MAX_YEARS_AT_100_PERCENT.toLocaleString() + " years";
             }
 
-            const years = Math.floor(totalDays / 365);
-            const days = totalDays % 365;
-
-            let yearText = years.toLocaleString() + " " + (years === 1 ? "year" : "years");
-            let dayText = days + " " + (days === 1 ? "day" : "days");
-
-            if (days === 0) return yearText;
-            return yearText + " and " + dayText;
+            const seconds = getSecondsFromScore(score);
+            return formatSeconds(seconds);
         }
 
-        function formatSubSecond(seconds) {
-            if (seconds >= 0.01) return seconds.toFixed(2);
-            if (seconds >= 0.001) return seconds.toFixed(3);
-            if (seconds >= 0.000001) return seconds.toFixed(6);
-            return "0.000001";
+        function getSecondsFromScore(score) {
+            const oneMinute = 60;
+            const oneHour = 60 * 60;
+            const oneDay = 24 * oneHour;
+            const oneYear = 365 * oneDay;
+
+            const maxSeconds = MAX_YEARS_AT_100_PERCENT * oneYear;
+
+            const points = [
+                { score: 0, seconds: 0.000001 },
+                { score: 10, seconds: 1 },
+                { score: 25, seconds: oneMinute },
+                { score: 40, seconds: oneHour },
+                { score: 55, seconds: oneDay },
+                { score: 70, seconds: oneYear },
+                { score: 85, seconds: 10000 * oneYear },
+                { score: 100, seconds: maxSeconds }
+            ];
+
+            for (let i = 0; i < points.length - 1; i++) {
+                const current = points[i];
+                const next = points[i + 1];
+
+                if (score >= current.score && score <= next.score) {
+                    const progress = (score - current.score) / (next.score - current.score);
+
+                    const logCurrent = Math.log(current.seconds);
+                    const logNext = Math.log(next.seconds);
+                    const logSeconds = logCurrent + progress * (logNext - logCurrent);
+
+                    return Math.exp(logSeconds);
+                }
+            }
+
+            return maxSeconds;
         }
 
-        function getSassyComment(score, password, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
-            const commonPasswords = ["password", "123456", "12345678", "qwerty", "abc123", "111111", "admin", "iloveyou"];
+        function formatSeconds(seconds) {
+            if (seconds < 0.000001) {
+                return "Less than 0.000001 seconds";
+            }
 
-            const commonRoasts = [
-                "This password is so famous, it probably has its own Wikipedia page.",
-                "Bro typed the password equivalent of leaving the front door open with snacks for the hacker.",
-                "This password has been guessed more times than exam answers in a group chat."
-            ];
+            if (seconds < 1) {
+                return seconds.toFixed(6) + " seconds";
+            }
 
-            const dictionaryRoasts = [
-                "A dictionary word? The hacker brought a dictionary and you gave them the page number.",
-                "This password is literally giving English homework, not cybersecurity.",
-                "Dictionary word detected. The hacker just opened spell check and found you."
-            ];
+            if (seconds < 60) {
+                return Math.round(seconds) + " seconds";
+            }
 
-            const famousCharacterRoasts = [
-                "Using a famous character name? Batman protects Gotham, not your login.",
-                "Bro picked a movie character and expected military-grade security.",
-                "Famous character detected. The hacker has watched that franchise too."
-            ];
+            if (seconds < 3600) {
+                const minutes = Math.round(seconds / 60);
+                return minutes + " " + (minutes === 1 ? "minute" : "minutes");
+            }
 
-            const famousSignRoasts = [
-                "007 detected. James Bond is cool, but even he would not use this password.",
-                "Famous number detected. The hacker did not need a license to crack this.",
-                "That number is famous enough to have fans. Sadly, hackers are fans too."
-            ];
+            if (seconds < 86400) {
+                const hours = Math.round(seconds / 3600);
+                return hours + " " + (hours === 1 ? "hour" : "hours");
+            }
 
-            const shortRoasts = [
-                "That password is shorter than a TikTok attention span.",
-                "I blinked and the password was over.",
-                "This password is not weak. It is unemployed."
-            ];
+            if (seconds < 31536000) {
+                const days = Math.round(seconds / 86400);
+                return days + " " + (days === 1 ? "day" : "days");
+            }
 
-            const sequenceRoasts = [
-                "1234 energy detected. Even your keyboard predicted that one.",
-                "That sequence is so obvious, the hacker does not need Wi‑Fi, just vibes.",
-                "Using 1234 is not a password. It is a surrender note."
-            ];
+            const years = Math.round(seconds / 31536000);
 
-            const repeatRoasts = [
-                "Repeating letters like that is not security, it is your keyboard having a panic attack.",
-                "Same character three times? The hacker just yawned and logged in.",
-                "This password has more repetition than a lecturer saying ‘this will be in the exam’."
-            ];
+            return years.toLocaleString() + " " + (years === 1 ? "year" : "years");
+        }
 
-            const weakRoasts = [
-                "This password is basically a paper lock on a glass door.",
-                "A hacker would crack this during their loading screen.",
-                "This password is giving ‘please hack me gently’ energy."
-            ];
-
-            const mediumRoasts = [
-                "Not bad. Not great. It is standing outside the gym thinking about going in.",
-                "This password studied for the test, but only on the bus ride there.",
-                "It has potential, but right now it is wearing security as a fashion accessory."
-            ];
-
-            const strongRoasts = [
-                "Okay, this password came prepared. Hacker is crying in the corner.",
-                "This password has security guards, CCTV, and trust issues.",
-                "Finally, a password that did not embarrass the entire internet."
+        function getSassyComment(
+            score,
+            password,
+            onlySymbols,
+            hasRepeats,
+            hasSequence,
+            hasCommonEnding,
+            dictionaryIssue,
+            famousIssue,
+            zxcvbnResult
+        ) {
+            const commonPasswords = [
+                "password", "password123", "password@123",
+                "123456", "12345678", "qwerty",
+                "abc123", "111111", "admin", "iloveyou"
             ];
 
             if (onlySymbols) {
-                return pickRandom([
-                    "Only symbols? That is not a password, that is keyboard confetti.",
-                    "Symbols alone look fancy, but the hacker is still not impressed.",
-                    "You smashed the symbol row and called it security. Bold choice."
-                ]);
+                return "Only symbols? That is not a password, that is keyboard confetti.";
             }
-            if (famousIssue.found && famousIssue.type === "sign") return pickRandom(famousSignRoasts);
-            if (famousIssue.found && famousIssue.type === "character") return pickRandom(famousCharacterRoasts);
-            if (commonPasswords.includes(password.toLowerCase())) return pickRandom(commonRoasts);
-            if (zxcvbnResult && zxcvbnResult.feedback && zxcvbnResult.feedback.warning) {
-                if (zxcvbnResult.score <= 1) {
-                    return "The security checker saw this and immediately called security. " + zxcvbnResult.feedback.warning;
-                }
+
+            if (commonPasswords.includes(password.toLowerCase())) {
+                return "This password is so common, hackers probably try it before having breakfast.";
             }
+
+            if (famousIssue.found && famousIssue.type === "sign") {
+                return "Famous number detected. Hackers know that one too.";
+            }
+
+            if (famousIssue.found && famousIssue.type === "character") {
+                return "Using a famous character name? Cool for movies, not for security.";
+            }
+
             if (dictionaryIssue.compoundCount >= 2) {
-                return pickRandom([
-                    "Two real words together? Cute. The hacker brought a dictionary and a coffee.",
-                    "That is not a password, that is just two vocabulary words holding hands.",
-                    "Meaningful words detected. The hacker is not hacking, they are reading."
-                ]);
+                return "Two real words together? Hackers can still guess that with dictionary attacks.";
             }
+
             if (dictionaryIssue.found && hasCommonEnding) {
-                return pickRandom([
-                    "Dictionary word plus @123? That is not security, that is decoration.",
-                    "You added @123 like a hacker has never seen season one of passwords.",
-                    "Word + @123 detected. The hacker just whispered ‘classic’ and walked in."
-                ]);
+                return "Dictionary word plus a common ending like 123 is very predictable.";
             }
-            if (dictionaryIssue.found) return pickRandom(dictionaryRoasts);
-            if (password.length < 8) return pickRandom(shortRoasts);
-            if (hasSequence) return pickRandom(sequenceRoasts);
-            if (hasRepeats) return pickRandom(repeatRoasts);
-            if (score < 40) return pickRandom(weakRoasts);
-            if (score < 75) return pickRandom(mediumRoasts);
-            return pickRandom(strongRoasts);
+
+            if (dictionaryIssue.found) {
+                return "Dictionary word detected. Try something less meaningful and less guessable.";
+            }
+
+            if (password.length < 8) {
+                return "That password is too short. It needs more characters.";
+            }
+
+            if (hasSequence) {
+                return "Simple sequence detected. 1234 energy is not secure.";
+            }
+
+            if (hasRepeats) {
+                return "Repeated characters detected. Try not to repeat the same key too much.";
+            }
+
+            if (score < 40) {
+                return "This password is weak. Make it longer and less predictable.";
+            }
+
+            if (score < 75) {
+                return "This password is okay, but it can still be improved.";
+            }
+
+            return "Strong password. The cracking time now matches the strength bar.";
         }
 
-        function pickRandom(list) {
-            return list[Math.floor(Math.random() * list.length)];
-        }
-
-        function getSeriousAdvice(password, hasLower, hasUpper, hasNumber, hasSymbol, onlySymbols, hasRepeats, hasSequence, hasCommonEnding, dictionaryIssue, famousIssue, zxcvbnResult) {
+        function getSeriousAdvice(
+            password,
+            hasLower,
+            hasUpper,
+            hasNumber,
+            hasSymbol,
+            onlySymbols,
+            hasRepeats,
+            hasSequence,
+            hasCommonEnding,
+            dictionaryIssue,
+            famousIssue,
+            zxcvbnResult
+        ) {
             let advice = ["<h2>Serious advice</h2>"];
 
             if (zxcvbnResult && zxcvbnResult.feedback) {
@@ -870,13 +949,19 @@
             if (hasSequence) advice.push("<li>Avoid simple sequences like 123, 1234, abc, qwer, or asdf.</li>");
             if (hasCommonEnding) advice.push("<li>Avoid predictable endings like @123, #123, 2026, 111, or 000.</li>");
             if (famousIssue.found) advice.push("<li>Avoid famous character names or famous numbers like 007 because attackers often try them.</li>");
-            if (dictionaryIssue.compoundCount >= 2) advice.push("<li>Avoid joining two meaningful dictionary words together. It can still be guessed by dictionary-based attacks.</li>");
-            else if (dictionaryIssue.found) advice.push("<li>Avoid basic dictionary words like names, places, sports, brands, or common objects.</li>");
+
+            if (dictionaryIssue.compoundCount >= 2) {
+                advice.push("<li>Avoid joining two meaningful dictionary words together. It can still be guessed by dictionary-based attacks.</li>");
+            } else if (dictionaryIssue.found) {
+                advice.push("<li>Avoid basic dictionary words like names, places, sports, brands, or common objects.</li>");
+            }
 
             if (advice.length === 1) {
                 advice.push("<li>This looks strong. Still, never reuse the same password on different websites.</li>");
                 advice.push("<li>Use a password manager for important accounts.</li>");
             }
+
+            advice.push("<li>The cracking time shown here is matched to the strength bar percentage.</li>");
 
             return advice.join("");
         }
