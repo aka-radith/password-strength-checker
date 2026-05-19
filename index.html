@@ -800,14 +800,14 @@
                 "Finally, a password that did not embarrass the entire internet."
             ];
 
-            if (zxcvbnResult && zxcvbnResult.feedback && zxcvbnResult.feedback.warning) {
-                if (zxcvbnResult.score <= 1) {
-                    return "zxcvbn saw this and immediately called security. " + zxcvbnResult.feedback.warning;
-                }
-            }
-            if (commonPasswords.includes(password.toLowerCase())) return pickRandom(commonRoasts);
             if (famousIssue.found && famousIssue.type === "sign") return pickRandom(famousSignRoasts);
             if (famousIssue.found && famousIssue.type === "character") return pickRandom(famousCharacterRoasts);
+            if (commonPasswords.includes(password.toLowerCase())) return pickRandom(commonRoasts);
+            if (zxcvbnResult && zxcvbnResult.feedback && zxcvbnResult.feedback.warning) {
+                if (zxcvbnResult.score <= 1) {
+                    return "The security checker saw this and immediately called security. " + zxcvbnResult.feedback.warning;
+                }
+            }
             if (dictionaryIssue.compoundCount >= 2) {
                 return pickRandom([
                     "Two real words together? Cute. The hacker brought a dictionary and a coffee.",
